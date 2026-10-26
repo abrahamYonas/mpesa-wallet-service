@@ -2,6 +2,7 @@ package com.example.mpesa.wallet;
 
 import com.example.mpesa.Bank.BankRepository;
 import com.example.mpesa.idempotency.IdempotencyRepository;
+import com.example.mpesa.payout.PayoutRepository;
 import com.example.mpesa.transfer.TransferRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,21 +20,25 @@ public class SeedService {
     private final TransferRepository transferRepository;
     private final IdempotencyRepository idempotencyRepository;
     private final BankRepository bankRepository;
+    private final PayoutRepository payoutRepository;
 
     public SeedService(
             WalletRepository walletRepository,
             TransferRepository transferRepository,
             IdempotencyRepository idempotencyRepository,
-            BankRepository bankRepository
+            BankRepository bankRepository,
+            PayoutRepository payoutRepository
     ) {
         this.walletRepository = walletRepository;
         this.transferRepository = transferRepository;
         this.idempotencyRepository = idempotencyRepository;
         this.bankRepository = bankRepository;
+        this.payoutRepository = payoutRepository;
     }
 
     @Transactional
     public void reset() {
+        payoutRepository.deleteAllInBatch();
         bankRepository.deleteAllInBatch();
         transferRepository.deleteAllInBatch();
         idempotencyRepository.deleteAllInBatch();

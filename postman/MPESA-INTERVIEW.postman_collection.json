@@ -327,7 +327,67 @@
       ]
     },
     {
-      "name": "4. Bank",
+      "name": "4. Wallet Payouts",
+      "item": [
+        {
+          "name": "Create Wallet Payout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "  pm.collectionVariables.set('walletPayoutId', pm.response.json().payout_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{payoutIdempotencyKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wallet_id\": \"M001\",\n  \"bank_account\": \"ACC-001\",\n  \"amount\": 5000\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/payouts",
+            "description": "Expect 202 quickly. Money is reserved. Final status comes later via recovery poll."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet Payout",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/mpesa/v1/payouts/{{walletPayoutId}}",
+            "description": "Poll until SUCCEEDED or FAILED. Check M001 reserved/balance."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet M001 After Payout",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/mpesa/v1/wallets/M001"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Bank",
       "item": [
         {
           "name": "Create Payout",
@@ -448,6 +508,14 @@
     {
       "key": "idempotencyKey",
       "value": "test-transfer-001"
+    },
+    {
+      "key": "payoutIdempotencyKey",
+      "value": "test-payout-001"
+    },
+    {
+      "key": "walletPayoutId",
+      "value": ""
     }
   ]
 }

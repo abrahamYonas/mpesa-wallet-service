@@ -12,6 +12,7 @@ public enum ErrorCode {
 
     WALLET_NOT_FOUND(HttpStatus.NOT_FOUND),
     TRANSFER_NOT_FOUND(HttpStatus.NOT_FOUND),
+    PAYOUT_NOT_FOUND(HttpStatus.NOT_FOUND),
 
     IDEMPOTENCY_CONFLICT(HttpStatus.CONFLICT),
     REQUEST_IN_PROGRESS(HttpStatus.CONFLICT),

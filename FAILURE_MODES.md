@@ -25,13 +25,13 @@ Wrote these as I went. Most of the wallet/transfer stuff I handled myself. Concu
 - [x] Freeze returns but a transfer still debits after. Prevented: transfer checks ACTIVE under row lock; freeze also locks the row. In-flight either finishes before freeze or fails WALLET_NOT_ACTIVE.
 - [ ] Freeze under heavy load taking >2s. not measured / not handled specially
 
-## 5.4 Payouts — not built yet
+## 5.4 Payouts
 
-- [ ] Reserve never released if bank hangs
-- [ ] Double pay if callback + recovery both finalize
-- [ ] Report FAILED but bank still paid
-- [ ] Holding request thread on bank call → pool / tomcat starvation
-- [ ] Instance killed after reserve, before bank answer
+- [x] Reserve never released if bank hangs. Prevented: recovery job polls bank and fails/succeeds; reserved released on FAIL, balance+reserved on SUCCESS.
+- [x] Double finalize. Prevented: markSucceeded/markFailed only if still PENDING + row lock.
+- [ ] Report FAILED but bank still paid. partly handled by polling bank status — callbacks not built yet
+- [x] Holding request thread on bank call. Prevented: return 202 first, bank call on @Async after commit.
+- [x] Instance killed after reserve. Prevented: PENDING in DB, other instance recovery picks it up.
 
 ## 5.5 Bank callbacks — not built yet
 
