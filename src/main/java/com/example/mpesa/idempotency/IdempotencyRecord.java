@@ -25,6 +25,7 @@ public class IdempotencyRecord {
     @Column(name = "request_hash", nullable = false)
     private String requestHash;
 
+    // 0 = still running, otherwise the HTTP status we already returned
     @Column(name = "response_status", nullable = false)
     private int responseStatus;
 
@@ -34,4 +35,8 @@ public class IdempotencyRecord {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    public boolean isFinished() {
+        return responseStatus > 0;
+    }
 }

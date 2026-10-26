@@ -2,7 +2,9 @@ package com.example.mpesa.idempotency;
 
 import com.example.mpesa.exception.ApiException;
 import com.example.mpesa.exception.ErrorCode;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
@@ -62,15 +64,39 @@ public class IdempotencyService {
         }
     }
 
+    // Own short tx so a unique-key clash doesn't kill the caller's transaction
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean tryStart(String key, String requestHash) {
+        Optional<IdempotencyRecord> existing = findValid(key);
+        if (existing.isPresent()) {
+            return false;
+        }
+        try {
+            IdempotencyRecord record = new IdempotencyRecord();
+            record.setIdempotencyKey(key);
+            record.setRequestHash(requestHash);
+            record.setResponseStatus(0);
+            record.setResponseBody("");
+            record.setCreatedAt(Instant.now());
+            idempotencyRepository.saveAndFlush(record);
+            return true;
+        } catch (DataIntegrityViolationException e) {
+            return false;
+        }
+    }
+
     @Transactional
-    public void save(String key, String requestHash, int status, Object responseBody) {
-        IdempotencyRecord record = new IdempotencyRecord();
-        record.setIdempotencyKey(key);
-        record.setRequestHash(requestHash);
+    public void complete(String key, int status, Object responseBody) {
+        IdempotencyRecord record = idempotencyRepository.findById(key)
+                .orElseThrow(() -> new IllegalStateException("Missing idempotency key: " + key));
         record.setResponseStatus(status);
         record.setResponseBody(objectMapper.writeValueAsString(responseBody));
-        record.setCreatedAt(Instant.now());
         idempotencyRepository.save(record);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void release(String key) {
+        idempotencyRepository.deleteById(key);
     }
 
     public <T> T readBody(IdempotencyRecord record, Class<T> type) {

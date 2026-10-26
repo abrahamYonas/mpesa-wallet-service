@@ -10,7 +10,7 @@ Wrote these as I went. Most of the wallet/transfer stuff I handled myself. Concu
 - [x] Same key, different body → silent wrong transfer. Prevented: hash body, 409 IDEMPOTENCY_CONFLICT.
 - [x] Transfer from frozen wallet. Prevented: both wallets must be ACTIVE.
 - [x] Same wallet both sides creates money loop / nonsense. Prevented: 422 SAME_WALLET.
-- [ ] Concurrent identical keys on 8081 and 8082 at the same time. not handled yet (both can pass the "key not found" check)
+- [x] Concurrent identical keys on 8081 and 8082 at the same time. Prevented: insert key first (claim). Loser gets replay or 409 REQUEST_IN_PROGRESS.
 
 ## 5.2 Reversal
 

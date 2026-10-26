@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -45,49 +44,69 @@ public class TransferService {
         validateTransferRequest(request);
 
         String requestHash = idempotencyService.hashRequest(request);
-        Optional<IdempotencyRecord> existing = idempotencyService.findValid(idempotencyKey);
-        if (existing.isPresent()) {
-            idempotencyService.assertSameBodyOrConflict(existing.get(), requestHash);
-            return idempotencyService.readBody(existing.get(), TransferResponse.class);
+
+        if (!idempotencyService.tryStart(idempotencyKey, requestHash)) {
+            return replayOrBusy(idempotencyKey, requestHash);
         }
 
-        WalletPair wallets = lockPair(request.getFromWallet(), request.getToWallet());
-        Wallet from = wallets.leftEquals(request.getFromWallet()) ? wallets.left() : wallets.right();
-        Wallet to = wallets.leftEquals(request.getToWallet()) ? wallets.left() : wallets.right();
+        try {
+            WalletPair wallets = lockPair(request.getFromWallet(), request.getToWallet());
+            Wallet from = wallets.leftEquals(request.getFromWallet()) ? wallets.left() : wallets.right();
+            Wallet to = wallets.leftEquals(request.getToWallet()) ? wallets.left() : wallets.right();
 
-        requireActive(from);
-        requireActive(to);
+            requireActive(from);
+            requireActive(to);
 
-        if (from.available() < request.getAmount()) {
+            if (from.available() < request.getAmount()) {
+                throw new ApiException(
+                        ErrorCode.INSUFFICIENT_FUNDS,
+                        "Sender has insufficient available balance"
+                );
+            }
+
+            from.setBalance(from.getBalance() - request.getAmount());
+            to.setBalance(to.getBalance() + request.getAmount());
+            walletRepository.save(from);
+            walletRepository.save(to);
+
+            Transfer transfer = new Transfer();
+            transfer.setTransferId("T-" + shortId());
+            transfer.setFromWallet(from.getWalletId());
+            transfer.setToWallet(to.getWalletId());
+            transfer.setAmount(request.getAmount());
+            transfer.setReference(request.getReference());
+            transfer.setStatus(Transfer.STATUS_COMPLETED);
+            transfer.setCreatedAt(Instant.now());
+            transferRepository.save(transfer);
+
+            TransferResponse response = new TransferResponse(
+                    transfer.getTransferId(),
+                    transfer.getStatus(),
+                    from.available(),
+                    transfer.getCreatedAt()
+            );
+            idempotencyService.complete(idempotencyKey, 201, response);
+            return response;
+        } catch (RuntimeException e) {
+            idempotencyService.release(idempotencyKey);
+            throw e;
+        }
+    }
+
+    private TransferResponse replayOrBusy(String idempotencyKey, String requestHash) {
+        IdempotencyRecord existing = idempotencyService.findValid(idempotencyKey)
+                .orElseThrow(() -> new ApiException(
+                        ErrorCode.REQUEST_IN_PROGRESS,
+                        "Same Idempotency-Key is already being processed"
+                ));
+        idempotencyService.assertSameBodyOrConflict(existing, requestHash);
+        if (!existing.isFinished()) {
             throw new ApiException(
-                    ErrorCode.INSUFFICIENT_FUNDS,
-                    "Sender has insufficient available balance"
+                    ErrorCode.REQUEST_IN_PROGRESS,
+                    "Same Idempotency-Key is already being processed"
             );
         }
-
-        from.setBalance(from.getBalance() - request.getAmount());
-        to.setBalance(to.getBalance() + request.getAmount());
-        walletRepository.save(from);
-        walletRepository.save(to);
-
-        Transfer transfer = new Transfer();
-        transfer.setTransferId("T-" + shortId());
-        transfer.setFromWallet(from.getWalletId());
-        transfer.setToWallet(to.getWalletId());
-        transfer.setAmount(request.getAmount());
-        transfer.setReference(request.getReference());
-        transfer.setStatus(Transfer.STATUS_COMPLETED);
-        transfer.setCreatedAt(Instant.now());
-        transferRepository.save(transfer);
-
-        TransferResponse response = new TransferResponse(
-                transfer.getTransferId(),
-                transfer.getStatus(),
-                from.available(),
-                transfer.getCreatedAt()
-        );
-        idempotencyService.save(idempotencyKey, requestHash, 201, response);
-        return response;
+        return idempotencyService.readBody(existing, TransferResponse.class);
     }
 
     @Transactional

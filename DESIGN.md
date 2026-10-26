@@ -7,7 +7,7 @@ Most of this I wrote myself (wallets, p2p, reversal, seed/reset, errors). The tr
 - Money: long santim, no doubles.
 - available = balance - reserved (reserved unused until payouts).
 - Isolation: default Spring/Postgres READ COMMITTED. Correctness comes from SELECT ... FOR UPDATE on wallets, not SERIALIZABLE.
-- Idempotency: DB table keyed by Idempotency-Key, SHA-256 of body, store status + JSON response, keep 24h. Replay returns stored body. Chose "no REQUEST_IN_PROGRESS yet" — race on concurrent first use is still open.
+- Idempotency: claim the key with an insert first (status 0 = in progress). Winner does the work then fills status + body. Loser either replays the finished response or gets 409 REQUEST_IN_PROGRESS. Body hash mismatch → 409 IDEMPOTENCY_CONFLICT. Keep 24h.
 - Two instances: same jar, PORT=8081/8082, shared Postgres. No in-memory locks for money paths.
 - Fake bank: still colocated for now. Will split to :9090 later.
 
@@ -22,6 +22,5 @@ Not implemented yet. Plan: accept payout → tx reserves amount, row PENDING, co
 ## Q3 — What I left out
 
 - Payouts (5.4) + callbacks (5.5): hard part is unknown bank outcome + early/duplicate callbacks + kill -9 still finalizing in 2 min. Need DB-backed state machine + async submit + recovery.
-- Concurrent idempotency (S1.2): need unique insert or claim row so second waiter doesn't double-apply.
 - Bank as separate process: callbacks, configurable rates, total-paid endpoint.
 - E2E S1–S5, B2C (5.6), statement (5.7). Optional APIs I'll either skip or sketch here if time runs out — statement needs stable cursor under concurrent writes; B2C needs per-row independence without locking M001 for 60s.
