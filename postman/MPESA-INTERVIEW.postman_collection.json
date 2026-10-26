@@ -387,7 +387,69 @@
       ]
     },
     {
-      "name": "5. Bank",
+      "name": "5. Callbacks",
+      "item": [
+        {
+          "name": "Bank Callback (manual)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"manual-event-001\",\n  \"payout_id\": \"{{walletPayoutId}}\",\n  \"bank_ref\": \"BRTEST\",\n  \"status\": \"SUCCEEDED\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/callbacks/bank",
+            "description": "Manual callback. Bank also sends these automatically after accept. Same event_id twice should be a no-op. Unknown payout_id → 404."
+          },
+          "response": []
+        },
+        {
+          "name": "Bank Callback (duplicate event)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"manual-event-001\",\n  \"payout_id\": \"{{walletPayoutId}}\",\n  \"bank_ref\": \"BRTEST\",\n  \"status\": \"SUCCEEDED\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/callbacks/bank",
+            "description": "Same event_id → 200, no second money move."
+          },
+          "response": []
+        },
+        {
+          "name": "Bank Callback (unknown payout)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"unknown-001\",\n  \"payout_id\": \"P-does-not-exist\",\n  \"bank_ref\": \"BRTEST\",\n  \"status\": \"SUCCEEDED\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/callbacks/bank",
+            "description": "Expect 404 PAYOUT_NOT_FOUND."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Bank",
       "item": [
         {
           "name": "Create Payout",

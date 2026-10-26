@@ -33,11 +33,11 @@ Wrote these as I went. Most of the wallet/transfer stuff I handled myself. Concu
 - [x] Holding request thread on bank call. Prevented: return 202 first, bank call on @Async after commit.
 - [x] Instance killed after reserve. Prevented: PENDING in DB, other instance recovery picks it up.
 
-## 5.5 Bank callbacks — not built yet
+## 5.5 Bank callbacks
 
-- [ ] Duplicate event_id applies twice
-- [ ] Callback before submit returns
-- [ ] SUCCEEDED after we already marked FAILED
+- [x] Duplicate event_id applies twice. Prevented: callback_events PK on event_id.
+- [x] Callback before / while PENDING. Prevented: applies markSucceeded/Failed if still PENDING.
+- [x] SUCCEEDED after we already marked FAILED. Prevented: leave final status, set conflict=true, still 200.
 
 ## Fake bank (current stub)
 

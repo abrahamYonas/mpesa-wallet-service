@@ -17,10 +17,9 @@ Wallet row lock (FOR UPDATE): waits until the other tx commits/rolls back. Bound
 
 ## Q2 — Database restart mid-payout
 
-Accept → reserve + PENDING in one tx → commit → async bank call. If Postgres dies after reserve, row + reserved are still there after restart. @Scheduled recovery (both instances) finds PENDING, submits if needed, else GETs bank. SUCCEEDED: balance-=amt, reserved-=amt. FAILED: reserved-=amt only. Both finalize paths no-op if status already final (row lock). Callbacks still TODO.
+Accept → reserve + PENDING in one tx → commit → async bank call. If Postgres dies after reserve, row + reserved are still there after restart. @Scheduled recovery (both instances) finds PENDING, submits if needed, else GETs bank. SUCCEEDED: balance-=amt, reserved-=amt. FAILED: reserved-=amt only. Both finalize paths no-op if status already final (row lock). Bank also POSTs callbacks (sometimes 2–3x same event_id); we store event_id so effect runs once.
 
 ## Q3 — What I left out
 
-- Callbacks (5.5): early/duplicate event_id, conflict flag when status already final.
 - Bank as separate process: callbacks, configurable rates, total-paid endpoint.
 - E2E S1–S5, B2C (5.6), statement (5.7). Optional APIs I'll either skip or sketch here if time runs out — statement needs stable cursor under concurrent writes; B2C needs per-row independence without locking M001 for 60s.

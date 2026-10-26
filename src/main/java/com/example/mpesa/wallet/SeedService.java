@@ -1,6 +1,7 @@
 package com.example.mpesa.wallet;
 
 import com.example.mpesa.Bank.BankRepository;
+import com.example.mpesa.callback.CallbackEventRepository;
 import com.example.mpesa.idempotency.IdempotencyRepository;
 import com.example.mpesa.payout.PayoutRepository;
 import com.example.mpesa.transfer.TransferRepository;
@@ -21,23 +22,27 @@ public class SeedService {
     private final IdempotencyRepository idempotencyRepository;
     private final BankRepository bankRepository;
     private final PayoutRepository payoutRepository;
+    private final CallbackEventRepository callbackEventRepository;
 
     public SeedService(
             WalletRepository walletRepository,
             TransferRepository transferRepository,
             IdempotencyRepository idempotencyRepository,
             BankRepository bankRepository,
-            PayoutRepository payoutRepository
+            PayoutRepository payoutRepository,
+            CallbackEventRepository callbackEventRepository
     ) {
         this.walletRepository = walletRepository;
         this.transferRepository = transferRepository;
         this.idempotencyRepository = idempotencyRepository;
         this.bankRepository = bankRepository;
         this.payoutRepository = payoutRepository;
+        this.callbackEventRepository = callbackEventRepository;
     }
 
     @Transactional
     public void reset() {
+        callbackEventRepository.deleteAllInBatch();
         payoutRepository.deleteAllInBatch();
         bankRepository.deleteAllInBatch();
         transferRepository.deleteAllInBatch();
