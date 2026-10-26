@@ -7,6 +7,21 @@
   },
   "item": [
     {
+      "name": "0. Internal",
+      "item": [
+        {
+          "name": "Reset Seed Data",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/mpesa/internal/reset",
+            "description": "Deletes all data and restores W001–W100 ACTIVE, W101–W105 FROZEN, M001 merchant. Call before test scenarios."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "1. Wallets",
       "item": [
         {
@@ -25,6 +40,26 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/mpesa/v1/wallets/W002"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet M001",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/mpesa/v1/wallets/M001",
+            "description": "Merchant wallet. Expect balance 50000000."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet W101 (Frozen)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/mpesa/v1/wallets/W101",
+            "description": "Expect status FROZEN, balance 1000000."
           },
           "response": []
         },
