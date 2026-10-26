@@ -1,0 +1,418 @@
+{
+  "info": {
+    "_postman_id": "15f85ebf-e5ac-424f-b07f-262afc016f08",
+    "name": "MPESA-INTERVIEW",
+    "description": "Wallet + mock bank APIs. Set baseUrl to http://localhost:8081 (or 8082). Change idempotencyKey / payoutId when you want a fresh request.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Wallets",
+      "item": [
+        {
+          "name": "Get Wallet W001",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/mpesa/v1/wallets/W001",
+            "description": "Expect 200 with balance, reserved, available."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet W002",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/mpesa/v1/wallets/W002"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet Not Found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/mpesa/v1/wallets/W999",
+            "description": "Expect 404 WALLET_NOT_FOUND."
+          },
+          "response": []
+        },
+        {
+          "name": "Freeze Wallet W001",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"FROZEN\",\n  \"reason\": \"fraud review\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/wallets/W001/status"
+          },
+          "response": []
+        },
+        {
+          "name": "Unfreeze Wallet W001",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"reason\": \"cleared\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/wallets/W001/status"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. P2P Transfers",
+      "item": [
+        {
+          "name": "Create Transfer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('transferId', body.transfer_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from_wallet\": \"W001\",\n  \"to_wallet\": \"W002\",\n  \"amount\": 10000,\n  \"reference\": \"rent-october\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/p2p/transfers",
+            "description": "Expect 201. Saves transfer_id for reversal. Change idempotencyKey for a new transfer."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transfer (Idempotent Replay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from_wallet\": \"W001\",\n  \"to_wallet\": \"W002\",\n  \"amount\": 10000,\n  \"reference\": \"rent-october\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/p2p/transfers",
+            "description": "Same key + same body → same transfer_id, balances unchanged."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transfer (Idempotency Conflict)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from_wallet\": \"W001\",\n  \"to_wallet\": \"W002\",\n  \"amount\": 20000,\n  \"reference\": \"rent-october\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/p2p/transfers",
+            "description": "Same key + different body → 409 IDEMPOTENCY_CONFLICT."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transfer (Missing Idempotency-Key)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from_wallet\": \"W001\",\n  \"to_wallet\": \"W002\",\n  \"amount\": 10000,\n  \"reference\": \"rent-october\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/p2p/transfers",
+            "description": "Expect 400 VALIDATION_FAILED."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transfer (Same Wallet)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "same-wallet-001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from_wallet\": \"W001\",\n  \"to_wallet\": \"W001\",\n  \"amount\": 10000,\n  \"reference\": \"self\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/p2p/transfers",
+            "description": "Expect 422 SAME_WALLET."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transfer (Insufficient Funds)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "insufficient-001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from_wallet\": \"W001\",\n  \"to_wallet\": \"W002\",\n  \"amount\": 5000000,\n  \"reference\": \"too-much\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/p2p/transfers",
+            "description": "Expect 422 INSUFFICIENT_FUNDS if W001 available is below amount."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Reversals",
+      "item": [
+        {
+          "name": "Reverse Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"customer dispute\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/p2p/transfers/{{transferId}}/reversal",
+            "description": "Expect 200. Uses transferId from Create Transfer."
+          },
+          "response": []
+        },
+        {
+          "name": "Reverse Transfer (Already Reversed)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"retry\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/p2p/transfers/{{transferId}}/reversal",
+            "description": "Expect 409 ALREADY_REVERSED."
+          },
+          "response": []
+        },
+        {
+          "name": "Reverse Transfer (Not Found)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"customer dispute\"\n}"
+            },
+            "url": "{{baseUrl}}/mpesa/v1/p2p/transfers/T-does-not-exist/reversal",
+            "description": "Expect 404 TRANSFER_NOT_FOUND."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Bank",
+      "item": [
+        {
+          "name": "Create Payout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.result === 'ACCEPTED') {",
+                  "    pm.test('Accepted with bank_ref', function () {",
+                  "      pm.expect(body.bank_ref).to.be.a('string');",
+                  "    });",
+                  "  }",
+                  "  if (body.result === 'REJECTED') {",
+                  "    pm.test('Rejected with reason', function () {",
+                  "      pm.expect(body.reason).to.be.a('string');",
+                  "    });",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payout_id\": \"{{payoutId}}\",\n  \"bank_account\": \"ACC-001\",\n  \"amount\": 5000\n}"
+            },
+            "url": "{{baseUrl}}/bank/payouts",
+            "description": "Takes 2–6s. Outcomes: ACCEPTED (~80%), REJECTED (~8%), or 504 after ~60s (~12%). Raise Postman timeout if needed."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Payout (Idempotent Replay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payout_id\": \"{{payoutId}}\",\n  \"bank_account\": \"ACC-001\",\n  \"amount\": 5000\n}"
+            },
+            "url": "{{baseUrl}}/bank/payouts",
+            "description": "Same payout_id + same body → original result."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Payout (Idempotency Conflict)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payout_id\": \"{{payoutId}}\",\n  \"bank_account\": \"ACC-001\",\n  \"amount\": 9999\n}"
+            },
+            "url": "{{baseUrl}}/bank/payouts",
+            "description": "Same payout_id + different amount → REJECTED."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payout Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/bank/payouts/{{payoutId}}",
+            "description": "Takes 1–3s. Status: IN_PROGRESS, SUCCEEDED, FAILED, REJECTED, NOT_FOUND."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payout Status (Not Found)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/bank/payouts/P-does-not-exist",
+            "description": "Expect status NOT_FOUND."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "payoutId",
+      "value": "P-7f3a91"
+    },
+    {
+      "key": "transferId",
+      "value": ""
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "test-transfer-001"
+    }
+  ]
+}
