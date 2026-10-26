@@ -1,6 +1,7 @@
 package com.example.mpesa.transfer;
 
 import com.example.mpesa.exception.ApiException;
+import com.example.mpesa.exception.ErrorCode;
 import com.example.mpesa.idempotency.IdempotencyRecord;
 import com.example.mpesa.idempotency.IdempotencyService;
 import com.example.mpesa.transfer.dto.ReversalRequest;
@@ -9,7 +10,6 @@ import com.example.mpesa.transfer.dto.TransferRequest;
 import com.example.mpesa.transfer.dto.TransferResponse;
 import com.example.mpesa.wallet.Wallet;
 import com.example.mpesa.wallet.WalletRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,8 +60,7 @@ public class TransferService {
 
         if (from.available() < request.getAmount()) {
             throw new ApiException(
-                    HttpStatus.UNPROCESSABLE_ENTITY,
-                    "INSUFFICIENT_FUNDS",
+                    ErrorCode.INSUFFICIENT_FUNDS,
                     "Sender has insufficient available balance"
             );
         }
@@ -95,18 +94,16 @@ public class TransferService {
     public ReversalResponse reverse(String transferId, ReversalRequest request) {
         Transfer transfer = transferRepository.findById(transferId)
                 .orElseThrow(() -> new ApiException(
-                        HttpStatus.NOT_FOUND,
-                        "NOT_FOUND",
+                        ErrorCode.TRANSFER_NOT_FOUND,
                         "Transfer not found: " + transferId
                 ));
 
         if (Transfer.STATUS_REVERSED.equals(transfer.getStatus())) {
-            throw new ApiException(HttpStatus.CONFLICT, "ALREADY_REVERSED", "Transfer was already reversed");
+            throw new ApiException(ErrorCode.ALREADY_REVERSED, "Transfer was already reversed");
         }
         if (!Transfer.STATUS_COMPLETED.equals(transfer.getStatus())) {
             throw new ApiException(
-                    HttpStatus.UNPROCESSABLE_ENTITY,
-                    "NOT_REVERSIBLE",
+                    ErrorCode.NOT_REVERSIBLE,
                     "Only COMPLETED transfers can be reversed"
             );
         }
@@ -119,8 +116,7 @@ public class TransferService {
         requireActive(debitWallet);
         if (debitWallet.available() < transfer.getAmount()) {
             throw new ApiException(
-                    HttpStatus.UNPROCESSABLE_ENTITY,
-                    "INSUFFICIENT_FUNDS",
+                    ErrorCode.INSUFFICIENT_FUNDS,
                     "Debited wallet has insufficient available balance"
             );
         }
@@ -147,18 +143,18 @@ public class TransferService {
     private void validateTransferRequest(TransferRequest request) {
         if (request.getFromWallet() == null || request.getFromWallet().isBlank()
                 || request.getToWallet() == null || request.getToWallet().isBlank()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "from_wallet and to_wallet are required");
-        }
-        if (request.getFromWallet().equals(request.getToWallet())) {
-            throw new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, "SAME_WALLET", "from_wallet and to_wallet must differ");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "from_wallet and to_wallet are required");
         }
         if (request.getAmount() == null || request.getAmount() < MIN_AMOUNT || request.getAmount() > MAX_AMOUNT) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_AMOUNT", "amount must be between 1 and 5000000");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "amount must be between 1 and 5000000");
         }
         if (request.getReference() == null
                 || request.getReference().isBlank()
                 || request.getReference().length() > 64) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REFERENCE", "reference must be 1 to 64 characters");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "reference must be 1 to 64 characters");
+        }
+        if (request.getFromWallet().equals(request.getToWallet())) {
+            throw new ApiException(ErrorCode.SAME_WALLET, "from_wallet and to_wallet must differ");
         }
     }
 
@@ -173,14 +169,13 @@ public class TransferService {
 
     private Wallet lockWallet(String walletId) {
         return walletRepository.findByIdForUpdate(walletId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Wallet not found: " + walletId));
+                .orElseThrow(() -> new ApiException(ErrorCode.WALLET_NOT_FOUND, "Wallet not found: " + walletId));
     }
 
     private void requireActive(Wallet wallet) {
         if (!wallet.isActive()) {
             throw new ApiException(
-                    HttpStatus.UNPROCESSABLE_ENTITY,
-                    "WALLET_NOT_ACTIVE",
+                    ErrorCode.WALLET_NOT_ACTIVE,
                     "Wallet is not ACTIVE: " + wallet.getWalletId()
             );
         }

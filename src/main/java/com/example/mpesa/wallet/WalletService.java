@@ -1,10 +1,10 @@
 package com.example.mpesa.wallet;
 
 import com.example.mpesa.exception.ApiException;
+import com.example.mpesa.exception.ErrorCode;
 import com.example.mpesa.wallet.dto.UpdateWalletStatusRequest;
 import com.example.mpesa.wallet.dto.UpdateWalletStatusResponse;
 import com.example.mpesa.wallet.dto.WalletResponse;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,11 +30,11 @@ public class WalletService {
         if (request.getStatus() == null
                 || (!Wallet.STATUS_ACTIVE.equals(request.getStatus())
                 && !Wallet.STATUS_FROZEN.equals(request.getStatus()))) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_STATUS", "status must be ACTIVE or FROZEN");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "status must be ACTIVE or FROZEN");
         }
 
         Wallet wallet = walletRepository.findByIdForUpdate(walletId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Wallet not found: " + walletId));
+                .orElseThrow(() -> walletNotFound(walletId));
 
         Instant changedAt = Instant.now();
         if (!wallet.getStatus().equals(request.getStatus())) {
@@ -47,6 +47,10 @@ public class WalletService {
 
     private Wallet findOrThrow(String walletId) {
         return walletRepository.findById(walletId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", "Wallet not found: " + walletId));
+                .orElseThrow(() -> walletNotFound(walletId));
+    }
+
+    private ApiException walletNotFound(String walletId) {
+        return new ApiException(ErrorCode.WALLET_NOT_FOUND, "Wallet not found: " + walletId);
     }
 }

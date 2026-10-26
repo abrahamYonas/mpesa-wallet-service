@@ -1,7 +1,7 @@
 package com.example.mpesa.idempotency;
 
 import com.example.mpesa.exception.ApiException;
-import org.springframework.http.HttpStatus;
+import com.example.mpesa.exception.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -30,10 +30,10 @@ public class IdempotencyService {
 
     public void validateKey(String key) {
         if (key == null || key.isBlank()) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "MISSING_IDEMPOTENCY_KEY", "Idempotency-Key header is required");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "Idempotency-Key header is required");
         }
         if (key.length() > MAX_KEY_LENGTH) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_IDEMPOTENCY_KEY", "Idempotency-Key max length is 64");
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "Idempotency-Key max length is 64");
         }
     }
 
@@ -56,8 +56,7 @@ public class IdempotencyService {
     public void assertSameBodyOrConflict(IdempotencyRecord existing, String requestHash) {
         if (!existing.getRequestHash().equals(requestHash)) {
             throw new ApiException(
-                    HttpStatus.CONFLICT,
-                    "IDEMPOTENCY_CONFLICT",
+                    ErrorCode.IDEMPOTENCY_CONFLICT,
                     "Idempotency-Key was reused with a different request body"
             );
         }
