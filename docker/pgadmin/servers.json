@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "mpesa-spring",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "mpesa_spring",
+      "Username": "postgres",
+      "SSLMode": "prefer"
+    }
+  }
+}
